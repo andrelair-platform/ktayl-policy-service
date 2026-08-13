@@ -10,6 +10,12 @@ linters:
     - revive
     - exhaustive
   settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
     exhaustive:
       default-signifies-exhaustive: true
   exclusions:
