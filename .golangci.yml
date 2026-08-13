@@ -10,10 +10,6 @@ linters:
     - revive
     - exhaustive
   settings:
-    revive:
-      rules:
-        - name: exported
-          severity: warning
     exhaustive:
       default-signifies-exhaustive: true
   exclusions:
