@@ -110,7 +110,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Containerfile
+          file: Dockerfile
           push: true
           platforms: linux/amd64
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}

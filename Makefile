@@ -30,7 +30,7 @@ build-image:
 	docker build \
 		--build-arg CA_CERT="$$(cat ~/minicloud-ca.crt)" \
 		-t $(IMAGE):$(SHA) \
-		-f Containerfile .
+		-f Dockerfile .
 
 run:
 	PORT=8080 go run ./cmd/server
