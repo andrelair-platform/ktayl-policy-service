@@ -1,6 +1,7 @@
 version: "2"
 
 linters:
+  default: none
   enable:
     - errcheck
     - govet
@@ -15,8 +16,6 @@ linters:
           severity: warning
     exhaustive:
       default-signifies-exhaustive: true
-
-issues:
   exclusions:
     rules:
       - path: "_test\\.go"
