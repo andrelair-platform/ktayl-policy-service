@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+
+  "timezone": "Europe/Paris",
+  "schedule": ["every weekend"],
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["AndreLiar"],
+  "prConcurrentLimit": 3,
+  "commitMessagePrefix": "chore(deps):",
+
+  "enabledManagers": ["dockerfile", "gomod"],
+
+  "packageRules": [
+    {
+      "description": "Go module minor/patch — group to avoid PR spam from transitive updates",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go modules",
+      "automerge": false
+    },
+    {
+      "description": "Go module major — breaking API changes, needs test review",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "renovate", "major", "manual-review-required"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Containerfile base images (golang:1.25-alpine, distroless)",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "base images",
+      "automerge": false
+    },
+    {
+      "description": "golang major version bump — verify pgx/OTel compatibility",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "renovate", "major", "manual-review-required"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

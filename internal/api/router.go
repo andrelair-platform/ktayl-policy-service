@@ -9,10 +9,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// NewRouter builds the chi router with all middleware and routes wired up.
 func NewRouter(log *slog.Logger) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(requestLogger(log))
 
