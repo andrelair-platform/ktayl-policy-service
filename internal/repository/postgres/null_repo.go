@@ -7,6 +7,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// NullDocumentRepo is a no-op implementation used when no database DSN is configured.
+type NullDocumentRepo struct{}
+
+func NewNullDocumentRepo() *NullDocumentRepo { return &NullDocumentRepo{} }
+
+var _ domain.DocumentRepository = NullDocumentRepo{}
+
+func (NullDocumentRepo) Create(_ context.Context, _ *domain.Document) error { return nil }
+func (NullDocumentRepo) ListByPolicy(_ context.Context, _ uuid.UUID) ([]*domain.Document, error) {
+	return nil, nil
+}
+
 // NullAuditLogRepo is a no-op implementation used when no database DSN is configured.
 type NullAuditLogRepo struct{}
 

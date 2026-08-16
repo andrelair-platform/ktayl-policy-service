@@ -18,7 +18,8 @@ var identityMw = func(h http.Handler) http.Handler { return h }
 
 // NewRouter builds the chi router. When jwtMw is non-nil it is applied to all /v1/* routes
 // and per-endpoint scope guards are enabled. Pass nil to run without authentication (dev/test).
-func NewRouter(log *slog.Logger, svc *domain.PolicyService, jwtMw func(http.Handler) http.Handler) http.Handler {
+// docSvc may be nil when MinIO is not configured (document endpoints return 503).
+func NewRouter(log *slog.Logger, svc *domain.PolicyService, docSvc *domain.DocumentService, jwtMw func(http.Handler) http.Handler) http.Handler {
 	authEnabled := jwtMw != nil
 
 	r := chi.NewRouter()
@@ -54,6 +55,13 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, jwtMw func(http.Hand
 			r.With(writeScope).Post("/{id}/activate", th.Activate)
 			r.With(writeScope).Post("/{id}/cancel", th.Cancel)
 			r.With(readScope).Get("/{id}/history", th.History)
+
+			// Document generation (S005)
+			if docSvc != nil {
+				dh := handlers.NewDocumentHandler(docSvc)
+				r.With(writeScope).Post("/{id}/documents/attestation", dh.GenerateAttestation)
+				r.With(readScope).Get("/{id}/documents", dh.ListDocuments)
+			}
 		})
 	})
 

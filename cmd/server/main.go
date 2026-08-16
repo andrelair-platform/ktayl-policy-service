@@ -14,6 +14,7 @@ import (
 	"github.com/andrelair-platform/ktayl-policy-service/db"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/api"
 	apimw "github.com/andrelair-platform/ktayl-policy-service/internal/api/middleware"
+	"github.com/andrelair-platform/ktayl-policy-service/internal/documents"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
 	pgRepo "github.com/andrelair-platform/ktayl-policy-service/internal/repository/postgres"
 	"github.com/golang-migrate/migrate/v4"
@@ -32,6 +33,12 @@ func main() {
 	viper.SetDefault("write_timeout_s", 10)
 	viper.SetDefault("dsn", "")
 	viper.SetDefault("authentik_jwks_url", "")
+	viper.SetDefault("minio_endpoint", "")
+	viper.SetDefault("minio_access_key", "")
+	viper.SetDefault("minio_secret_key", "")
+	viper.SetDefault("minio_use_ssl", false)
+	viper.SetDefault("minio_public_url", "")
+	viper.SetDefault("document_url_ttl_s", 3600)
 	viper.AutomaticEnv()
 
 	// Background context drives the JWKS refresh goroutine for the lifetime of the process.
@@ -57,6 +64,7 @@ func main() {
 	}
 
 	var svc *domain.PolicyService
+	var docSvc *domain.DocumentService
 	if dsn != "" {
 		pool, err := pgxpool.New(bgCtx, dsn)
 		if err != nil {
@@ -71,6 +79,32 @@ func main() {
 		}
 
 		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool), pgRepo.NewAuditLogRepo(pool), pool)
+
+		if ep := viper.GetString("minio_endpoint"); ep != "" {
+			urlTTL := time.Duration(viper.GetInt("document_url_ttl_s")) * time.Second
+			store, err := documents.NewMinIOStore(bgCtx, ep,
+				viper.GetString("minio_access_key"),
+				viper.GetString("minio_secret_key"),
+				viper.GetBool("minio_use_ssl"),
+				urlTTL,
+				viper.GetString("minio_public_url"),
+			)
+			if err != nil {
+				log.Error("failed to connect to MinIO", "err", err)
+				os.Exit(1)
+			}
+			gen := documents.GeneratorFunc(documents.GenerateAttestation)
+			docSvc = domain.NewDocumentService(
+				pgRepo.NewPolicyRepo(pool),
+				pgRepo.NewDocumentRepo(pool),
+				gen,
+				store,
+				urlTTL,
+			)
+			log.Info("document service enabled", "minio_endpoint", ep)
+		} else {
+			log.Warn("MINIO_ENDPOINT not set — document endpoints disabled")
+		}
 	} else {
 		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo(), pgRepo.NewNullAuditLogRepo(), nil)
 	}
@@ -80,7 +114,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      api.NewRouter(log, svc, jwtMw),
+		Handler:      api.NewRouter(log, svc, docSvc, jwtMw),
 		ReadTimeout:  time.Duration(viper.GetInt("read_timeout_s")) * time.Second,
 		WriteTimeout: time.Duration(viper.GetInt("write_timeout_s")) * time.Second,
 	}

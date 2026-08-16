@@ -62,3 +62,18 @@ type AuditLogRepository interface {
 	Insert(ctx context.Context, tx any, log *AuditLog) error
 	ListByPolicy(ctx context.Context, policyID uuid.UUID) ([]*AuditLog, error)
 }
+
+// Document is a generated policy document stored in MinIO (CdCF §6.1 BF-POL-05).
+type Document struct {
+	ID        uuid.UUID
+	PolicyID  uuid.UUID
+	Type      string // "attestation"
+	MinIOKey  string
+	CreatedAt time.Time
+}
+
+// DocumentRepository persists document metadata.
+type DocumentRepository interface {
+	Create(ctx context.Context, d *Document) error
+	ListByPolicy(ctx context.Context, policyID uuid.UUID) ([]*Document, error)
+}
