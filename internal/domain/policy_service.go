@@ -17,17 +17,35 @@ var (
 	ErrReasonRequired = errors.New("reason is required for this transition")
 )
 
+// EventPublisher is the port for async event publishing (implemented by events.Publisher).
+// The interface lives in domain to avoid a circular import (events imports domain).
+type EventPublisher interface {
+	// PublishAsync sends the event in a goroutine after DB commit (AC-4).
+	PublishAsync(ctx context.Context, eventType string, p *Policy, actor, reason string)
+	// IsConnected reports whether the underlying transport is healthy.
+	IsConnected() bool
+}
+
 type PolicyService struct {
 	repo      PolicyRepository
 	auditRepo AuditLogRepository
 	db        *pgxpool.Pool
+	pub       EventPublisher // optional; nil = no events
 }
 
 func NewPolicyService(repo PolicyRepository, auditRepo AuditLogRepository, db *pgxpool.Pool) *PolicyService {
 	return &PolicyService{repo: repo, auditRepo: auditRepo, db: db}
 }
 
-func (s *PolicyService) Create(ctx context.Context, p *Policy) error {
+// SetPublisher attaches an event publisher to this service. Called from main.go after construction.
+func (s *PolicyService) SetPublisher(pub EventPublisher) { s.pub = pub }
+
+// NATSConnected returns true when a publisher is wired and connected.
+func (s *PolicyService) NATSConnected() bool {
+	return s.pub != nil && s.pub.IsConnected()
+}
+
+func (s *PolicyService) Create(ctx context.Context, p *Policy, actorID string) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
@@ -38,6 +56,10 @@ func (s *PolicyService) Create(ctx context.Context, p *Policy) error {
 	p.UpdatedAt = now
 	if err := s.repo.Create(ctx, p); err != nil {
 		return err
+	}
+	// AC-4: publish only after successful DB write
+	if s.pub != nil {
+		s.pub.PublishAsync(ctx, "created", p, actorID, "")
 	}
 	return nil
 }
@@ -187,6 +209,25 @@ func (s *PolicyService) applyTransition(ctx context.Context, id uuid.UUID, event
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
+	}
+	// AC-4: publish only after commit succeeds (no phantom events on rollback)
+	if s.pub != nil {
+		eventType := string(nextStatus) // fallback
+		switch nextStatus {
+		case StatusSubmitted:
+			eventType = "submitted"
+		case StatusActive:
+			eventType = "activated"
+		case StatusRejected:
+			eventType = "rejected"
+		case StatusAmended:
+			eventType = "amended"
+		case StatusCancelled:
+			eventType = "cancelled"
+		case StatusExpired:
+			eventType = "expired"
+		}
+		s.pub.PublishAsync(ctx, eventType, p, actorID, reason)
 	}
 	return p, nil
 }

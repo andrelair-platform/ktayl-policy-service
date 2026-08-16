@@ -19,6 +19,7 @@ var identityMw = func(h http.Handler) http.Handler { return h }
 // NewRouter builds the chi router. When jwtMw is non-nil it is applied to all /v1/* routes
 // and per-endpoint scope guards are enabled. Pass nil to run without authentication (dev/test).
 // docSvc may be nil when MinIO is not configured (document endpoints return 503).
+// svc.NATSConnected() is surfaced in /healthz.
 func NewRouter(log *slog.Logger, svc *domain.PolicyService, docSvc *domain.DocumentService, jwtMw func(http.Handler) http.Handler) http.Handler {
 	authEnabled := jwtMw != nil
 
@@ -27,7 +28,7 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, docSvc *domain.Docum
 	r.Use(chimw.Recoverer)
 	r.Use(middleware.RequestLogger(log))
 
-	r.Get("/healthz", healthz)
+	r.Get("/healthz", makeHealthz(svc))
 
 	ph := handlers.NewPolicyHandler(svc)
 	th := handlers.NewTransitionHandler(svc)
@@ -68,15 +69,22 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, docSvc *domain.Docum
 	return r
 }
 
-func healthz(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	version := os.Getenv("VERSION")
-	if version == "" {
-		version = "dev"
+func makeHealthz(svc *domain.PolicyService) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		version := os.Getenv("VERSION")
+		if version == "" {
+			version = "dev"
+		}
+		nats := "disconnected"
+		if svc != nil && svc.NATSConnected() {
+			nats = "connected"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status":  "ok",
+			"service": "ktayl-policy-service",
+			"version": version,
+			"nats":    nats,
+		})
 	}
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status":  "ok",
-		"service": "ktayl-policy-service",
-		"version": version,
-	})
 }

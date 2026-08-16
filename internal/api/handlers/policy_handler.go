@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/andrelair-platform/ktayl-policy-service/internal/api/middleware"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/repository/postgres"
 	"github.com/go-chi/chi/v5"
@@ -105,7 +106,7 @@ func (h *PolicyHandler) CreatePolicy(w http.ResponseWriter, r *http.Request) {
 		EffectiveDate: eff,
 		ExpiryDate:    exp,
 	}
-	if err := h.svc.Create(r.Context(), p); err != nil {
+	if err := h.svc.Create(r.Context(), p, middleware.SubjectFromContext(r.Context())); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrInvalidDateRange),
 			errors.Is(err, domain.ErrEmptyPolicyNumber),
