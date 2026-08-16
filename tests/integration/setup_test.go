@@ -50,7 +50,6 @@ func runMigrations(dsn string) error {
 	defer pool.Close()
 
 	sqlDB := stdlib.OpenDBFromPool(pool)
-	defer sqlDB.Close() // must run before pool.Close() (LIFO order)
 	driver, err := pgx5.WithInstance(sqlDB, &pgx5.Config{})
 	if err != nil {
 		return fmt.Errorf("migrate driver: %w", err)
@@ -63,8 +62,11 @@ func runMigrations(dsn string) error {
 	if err != nil {
 		return fmt.Errorf("migrate init: %w", err)
 	}
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("migrate up: %w", err)
+	upErr := m.Up()
+	// m.Close() releases the driver (which closes sqlDB) before pool.Close() runs.
+	_, _ = m.Close()
+	if upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
+		return fmt.Errorf("migrate up: %w", upErr)
 	}
 	return nil
 }
