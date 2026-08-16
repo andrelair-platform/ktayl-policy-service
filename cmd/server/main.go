@@ -79,7 +79,6 @@ func main() {
 			log.Error("migration failed", "err", err)
 			os.Exit(1)
 		}
-		defer pool.Close()
 
 		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool), pgRepo.NewAuditLogRepo(pool), pool)
 
@@ -120,6 +119,7 @@ func main() {
 				defer pub.Close()
 			}
 		}
+		defer pool.Close()
 	} else {
 		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo(), pgRepo.NewNullAuditLogRepo(), nil)
 	}
