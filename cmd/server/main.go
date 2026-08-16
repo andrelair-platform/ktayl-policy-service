@@ -11,7 +11,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/andrelair-platform/ktayl-policy-service/db"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/api"
+	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
+	pgRepo "github.com/andrelair-platform/ktayl-policy-service/internal/repository/postgres"
+	"github.com/golang-migrate/migrate/v4"
+	pgx5 "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 )
 
@@ -21,14 +29,39 @@ func main() {
 	viper.SetDefault("port", "8080")
 	viper.SetDefault("read_timeout_s", 10)
 	viper.SetDefault("write_timeout_s", 10)
+	viper.SetDefault("dsn", "")
 	viper.AutomaticEnv()
+
+	dsn := viper.GetString("dsn")
+	if dsn == "" {
+		log.Warn("DSN not set — running without database (healthz only)")
+	}
+
+	var svc *domain.PolicyService
+	if dsn != "" {
+		pool, err := pgxpool.New(context.Background(), dsn)
+		if err != nil {
+			log.Error("failed to create db pool", "err", err)
+			os.Exit(1)
+		}
+		defer pool.Close()
+
+		if err := runMigrations(pool, log); err != nil {
+			log.Error("migration failed", "err", err)
+			os.Exit(1)
+		}
+
+		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool))
+	} else {
+		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo())
+	}
 
 	port := viper.GetString("port")
 	addr := net.JoinHostPort("", port)
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      api.NewRouter(log),
+		Handler:      api.NewRouter(log, svc),
 		ReadTimeout:  time.Duration(viper.GetInt("read_timeout_s")) * time.Second,
 		WriteTimeout: time.Duration(viper.GetInt("write_timeout_s")) * time.Second,
 	}
@@ -51,4 +84,28 @@ func main() {
 		log.Error("shutdown error", "err", err)
 	}
 	log.Info("server stopped")
+}
+
+func runMigrations(pool *pgxpool.Pool, log *slog.Logger) error {
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	driver, err := pgx5.WithInstance(sqlDB, &pgx5.Config{})
+	if err != nil {
+		return err
+	}
+
+	src, err := iofs.New(db.Migrations, "migrations")
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithInstance("iofs", src, "postgres", driver)
+	if err != nil {
+		return err
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	log.Info("migrations applied")
+	return nil
 }
