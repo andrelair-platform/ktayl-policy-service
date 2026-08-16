@@ -70,9 +70,9 @@ func main() {
 		}
 		defer pool.Close()
 
-		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool))
+		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool), pgRepo.NewAuditLogRepo(pool), pool)
 	} else {
-		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo())
+		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo(), pgRepo.NewNullAuditLogRepo(), nil)
 	}
 
 	port := viper.GetString("port")

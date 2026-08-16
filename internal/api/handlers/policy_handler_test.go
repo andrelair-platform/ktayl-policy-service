@@ -69,7 +69,7 @@ func (m *mockPolicyRepo) List(_ context.Context, _ domain.ListParams) ([]*domain
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 func buildHandler(repo domain.PolicyRepository) *handlers.PolicyHandler {
-	svc := domain.NewPolicyService(repo)
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	return handlers.NewPolicyHandler(svc)
 }
 
