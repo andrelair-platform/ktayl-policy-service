@@ -10,238 +10,243 @@ import (
 
 	"github.com/andrelair-platform/ktayl-policy-service/internal/api/handlers"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-func buildTransitionHandler(repo domain.PolicyRepository) *handlers.TransitionHandler {
-	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
-	return handlers.NewTransitionHandler(svc)
+func setupTransitionRouter(svc *domain.PolicyService) *chi.Mux {
+	h := handlers.NewTransitionHandler(svc)
+	r := chi.NewRouter()
+	r.Post("/v1/policies/{id}/submit", h.Submit)
+	r.Post("/v1/policies/{id}/activate", h.Activate)
+	r.Post("/v1/policies/{id}/cancel", h.Cancel)
+	r.Get("/v1/policies/{id}/history", h.History)
+	return r
 }
 
-func draftPolicy(id uuid.UUID) *domain.Policy {
-	return &domain.Policy{
-		ID:            id,
-		PolicyNumber:  "POL-001",
-		HolderName:    "Jean Dupont",
+func newDraftInRepo() (*mockPolicyRepo, *domain.Policy) {
+	repo := newMockRepo()
+	p := &domain.Policy{
+		ID:            uuid.New(),
+		PolicyNumber:  "POL-T-001",
+		HolderName:    "Marie Dupont",
 		ProductCode:   "IARD-AUTO-RC",
-		Status:        domain.StatusDraft,
 		EffectiveDate: time.Now().Add(24 * time.Hour),
 		ExpiryDate:    time.Now().Add(365 * 24 * time.Hour),
+		Status:        domain.StatusDraft,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
-}
-
-func submittedPolicy(id uuid.UUID) *domain.Policy {
-	p := draftPolicy(id)
-	p.Status = domain.StatusSubmitted
-	return p
+	repo.policies[p.ID] = p
+	return repo, p
 }
 
 // ─── Submit ──────────────────────────────────────────────────────────────────
 
-func TestSubmit_400_BadUUID(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/bad-uuid/submit", nil), "bad-uuid")
+func TestSubmitPolicy_400_InvalidUUID(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Submit(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/not-a-uuid/submit", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
+		t.Errorf("want 400, got %d", w.Code)
 	}
 }
 
-func TestSubmit_404_NotFound(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/submit", nil), id.String())
+func TestSubmitPolicy_404_NotFound(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Submit(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+uuid.New().String()+"/submit", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+		t.Errorf("want 404, got %d", w.Code)
 	}
 }
 
-func TestSubmit_409_AlreadySubmitted(t *testing.T) {
-	repo := newMockRepo()
-	id := uuid.New()
-	repo.policies[id] = submittedPolicy(id)
-	h := buildTransitionHandler(repo)
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/submit", nil), id.String())
+func TestSubmitPolicy_409_WrongStatus(t *testing.T) {
+	repo, p := newDraftInRepo()
+	p.Status = domain.StatusActive // Active → Submit is an invalid transition
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Submit(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+p.ID.String()+"/submit", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusConflict {
-		t.Fatalf("expected 409, got %d", w.Code)
+		t.Errorf("want 409, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
 // ─── Activate ────────────────────────────────────────────────────────────────
 
-func TestActivate_400_BadUUID(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/bad/activate", nil), "bad")
+func TestActivatePolicy_400_InvalidUUID(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Activate(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/not-a-uuid/activate", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
+		t.Errorf("want 400, got %d", w.Code)
 	}
 }
 
-func TestActivate_404_NotFound(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/activate", nil), id.String())
+func TestActivatePolicy_404(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Activate(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+uuid.New().String()+"/activate", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+		t.Errorf("want 404, got %d", w.Code)
 	}
 }
 
-func TestActivate_409_DraftCannotActivate(t *testing.T) {
-	repo := newMockRepo()
-	id := uuid.New()
-	repo.policies[id] = draftPolicy(id)
-	h := buildTransitionHandler(repo)
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/activate", nil), id.String())
+func TestActivatePolicy_409_WrongStatus(t *testing.T) {
+	repo, p := newDraftInRepo()
+	p.Status = domain.StatusDraft // Draft → Activate is invalid
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Activate(w, r)
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+p.ID.String()+"/activate", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusConflict {
-		t.Fatalf("expected 409, got %d", w.Code)
+		t.Errorf("want 409, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
-// ─── Cancel ──────────────────────────────────────────────────────────────────
+// ─── Cancel (transition — active policy) ────────────────────────────────────
 
-func TestCancel_400_BadUUID(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	body, _ := json.Marshal(map[string]string{"reason": "CUSTOMER_REQUEST"})
+func TestCancelTransition_400_BadJSON(t *testing.T) {
+	repo, p := newDraftInRepo()
+	p.Status = domain.StatusActive
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+p.ID.String()+"/cancel",
+		bytes.NewBufferString("{not json"))
 	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/bad/cancel", bytes.NewReader(body)), "bad")
-	r.Header.Set("Content-Type", "application/json")
-
-	h.Cancel(w, r)
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
+		t.Errorf("want 400, got %d", w.Code)
 	}
 }
 
-func TestCancel_400_BadJSON(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/cancel", bytes.NewReader([]byte(`{bad`))), id.String())
-	r.Header.Set("Content-Type", "application/json")
+func TestCancelTransition_422_MissingReason(t *testing.T) {
+	repo, p := newDraftInRepo()
+	p.Status = domain.StatusActive
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Cancel(w, r)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
-	}
-}
-
-func TestCancel_422_MissingReason(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"reason": ""})
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+p.ID.String()+"/cancel",
+		bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/cancel", bytes.NewReader(body)), id.String())
-	r.Header.Set("Content-Type", "application/json")
-
-	h.Cancel(w, r)
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422, got %d", w.Code)
+		t.Errorf("want 422, got %d", w.Code)
 	}
 }
 
-func TestCancel_404_NotFound(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
-	body, _ := json.Marshal(map[string]string{"reason": "CUSTOMER_REQUEST"})
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/cancel", bytes.NewReader(body)), id.String())
-	r.Header.Set("Content-Type", "application/json")
+func TestCancelTransition_404_NotFound(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Cancel(w, r)
+	body, _ := json.Marshal(map[string]string{"reason": "CUSTOMER_REQUEST"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+uuid.New().String()+"/cancel",
+		bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+		t.Errorf("want 404, got %d", w.Code)
 	}
 }
 
-func TestCancel_409_DraftCannotCancelActive(t *testing.T) {
-	repo := newMockRepo()
-	id := uuid.New()
-	repo.policies[id] = draftPolicy(id) // draft → can't do CancelActive (EventCancel invalid from draft)
-	h := buildTransitionHandler(repo)
-	body, _ := json.Marshal(map[string]string{"reason": "CUSTOMER_REQUEST"})
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodPost, "/v1/policies/"+id.String()+"/cancel", bytes.NewReader(body)), id.String())
-	r.Header.Set("Content-Type", "application/json")
+func TestCancelTransition_409_WrongStatus(t *testing.T) {
+	repo, p := newDraftInRepo()
+	p.Status = domain.StatusDraft // Draft → Cancel is invalid in applyTransition
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.Cancel(w, r)
+	body, _ := json.Marshal(map[string]string{"reason": "CUSTOMER_REQUEST"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/policies/"+p.ID.String()+"/cancel",
+		bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusConflict {
-		t.Fatalf("expected 409, got %d", w.Code)
+		t.Errorf("want 409, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
 // ─── History ─────────────────────────────────────────────────────────────────
 
-func TestHistory_400_BadUUID(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodGet, "/v1/policies/bad/history", nil), "bad")
+func TestHistory_400_InvalidUUID(t *testing.T) {
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.History(w, r)
+	req := httptest.NewRequest(http.MethodGet, "/v1/policies/not-a-uuid/history", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
+		t.Errorf("want 400, got %d", w.Code)
 	}
 }
 
 func TestHistory_404_NotFound(t *testing.T) {
-	h := buildTransitionHandler(newMockRepo())
-	id := uuid.New()
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodGet, "/v1/policies/"+id.String()+"/history", nil), id.String())
+	svc := domain.NewPolicyService(newMockRepo(), domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.History(w, r)
+	req := httptest.NewRequest(http.MethodGet, "/v1/policies/"+uuid.New().String()+"/history", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+		t.Errorf("want 404, got %d", w.Code)
 	}
 }
 
-func TestHistory_200_OK(t *testing.T) {
-	repo := newMockRepo()
-	id := uuid.New()
-	repo.policies[id] = draftPolicy(id)
-	h := buildTransitionHandler(repo)
-	w := httptest.NewRecorder()
-	r := chiCtxWithID(httptest.NewRequest(http.MethodGet, "/v1/policies/"+id.String()+"/history", nil), id.String())
+func TestHistory_200_EmptyList(t *testing.T) {
+	repo, p := newDraftInRepo()
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+	rtr := setupTransitionRouter(svc)
 
-	h.History(w, r)
+	req := httptest.NewRequest(http.MethodGet, "/v1/policies/"+p.ID.String()+"/history", nil)
+	w := httptest.NewRecorder()
+	rtr.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
 	}
 	var resp map[string]any
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := resp["history"]; !ok {
-		t.Error("response missing 'history' field")
+	hist, ok := resp["history"]
+	if !ok {
+		t.Fatal("response missing 'history' key")
+	}
+	arr, ok := hist.([]any)
+	if !ok || len(arr) != 0 {
+		t.Errorf("expected empty history array, got %v", hist)
 	}
 }
