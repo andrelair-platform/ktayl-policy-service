@@ -66,15 +66,6 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, docSvc *domain.Docum
 		})
 	})
 
-	ph := handlers.NewPolicyHandler(svc)
-	r.Route("/v1/policies", func(r chi.Router) {
-		r.Post("/", ph.CreatePolicy)
-		r.Get("/", ph.ListPolicies)
-		r.Get("/{id}", ph.GetPolicy)
-		r.Put("/{id}", ph.UpdatePolicy)
-		r.Delete("/{id}", ph.CancelPolicy)
-	})
-
 	return r
 }
 
@@ -96,9 +87,4 @@ func makeHealthz(svc *domain.PolicyService) http.HandlerFunc {
 			"nats":    nats,
 		})
 	}
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status":  "ok",
-		"service": "ktayl-policy-service",
-		"version": version,
-	})
 }
