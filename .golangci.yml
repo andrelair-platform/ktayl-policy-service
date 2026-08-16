@@ -1,0 +1,28 @@
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gocritic
+    - ineffassign
+    - misspell
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - encoding/json.NewEncoder.Encode
+  exclusions:
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - errcheck
+      - path: internal/repository/postgres
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

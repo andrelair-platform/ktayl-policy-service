@@ -12,8 +12,25 @@ env:
   GITOPS_REPO: andrelair-platform/minicloud-gitops
 
 jobs:
+  # ── L0 — lint ──────────────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25.13'
+          cache: false
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+
   # ── L1 — unit tests + security ─────────────────────────────────────────────
   test:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -52,7 +69,7 @@ jobs:
 
   # ── Build + push to Harbor ─────────────────────────────────────────────────
   build-and-push:
-    needs: test
+    needs: [lint, test]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

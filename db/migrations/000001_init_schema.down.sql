@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS premiums;
+DROP TABLE IF EXISTS coverages;
+DROP TABLE IF EXISTS policies;
+DROP EXTENSION IF EXISTS "uuid-ossp";
