@@ -18,9 +18,9 @@ var (
 )
 
 type PolicyService struct {
-	repo     PolicyRepository
+	repo      PolicyRepository
 	auditRepo AuditLogRepository
-	db       *pgxpool.Pool
+	db        *pgxpool.Pool
 }
 
 func NewPolicyService(repo PolicyRepository, auditRepo AuditLogRepository, db *pgxpool.Pool) *PolicyService {
