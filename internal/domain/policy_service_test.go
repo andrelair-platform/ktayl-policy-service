@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -252,5 +253,40 @@ func TestPolicyService_Cancel_NotFound(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
 	if err := svc.Cancel(context.Background(), uuid.New()); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+// ─── ListHistory ─────────────────────────────────────────────────────────────
+
+func TestPolicyService_ListHistory_OK(t *testing.T) {
+	repo := newMock()
+	id := uuid.New()
+	repo.policies[id] = &domain.Policy{
+		ID:           id,
+		PolicyNumber: "POL-H-001",
+		HolderName:   "Test Holder",
+		ProductCode:  "IARD-AUTO-RC",
+		Status:       domain.StatusActive,
+	}
+	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
+
+	logs, err := svc.ListHistory(context.Background(), id)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Errorf("expected 0 logs from NullAuditLog, got %d", len(logs))
+	}
+}
+
+func TestPolicyService_ListHistory_NotFound(t *testing.T) {
+	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
+
+	_, err := svc.ListHistory(context.Background(), uuid.New())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, domain.ErrPolicyNotFound) {
+		t.Errorf("want ErrPolicyNotFound, got %v", err)
 	}
 }
