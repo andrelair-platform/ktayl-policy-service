@@ -44,12 +44,12 @@ func main() {
 			log.Error("failed to create db pool", "err", err)
 			os.Exit(1)
 		}
-		defer pool.Close()
-
 		if err := runMigrations(pool, log); err != nil {
+			pool.Close()
 			log.Error("migration failed", "err", err)
 			os.Exit(1)
 		}
+		defer pool.Close()
 
 		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool))
 	} else {
