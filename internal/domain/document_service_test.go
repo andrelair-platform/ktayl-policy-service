@@ -150,6 +150,43 @@ func TestDocumentService_ListDocuments(t *testing.T) {
 	}
 }
 
+func TestDocumentService_GenerateAttestation_NoStore(t *testing.T) {
+	policyID := uuid.New()
+	svc := domain.NewDocumentService(newMock(), &mockDocRepo{}, &mockDocGen{}, nil, time.Hour)
+	_, err := svc.GenerateAttestation(context.Background(), policyID)
+	if !errors.Is(err, domain.ErrNoMinIOStore) {
+		t.Fatalf("expected ErrNoMinIOStore, got %v", err)
+	}
+}
+
+func TestDocumentService_GenerateAttestation_GeneratorError(t *testing.T) {
+	policyID := uuid.New()
+	pRepo := newMock()
+	pRepo.policies[policyID] = &domain.Policy{
+		ID:            policyID,
+		PolicyNumber:  "POL-003",
+		HolderName:    "Pierre",
+		ProductCode:   "IARD-AUTO-RC",
+		Status:        domain.StatusActive,
+		EffectiveDate: time.Now().Add(24 * time.Hour),
+		ExpiryDate:    time.Now().Add(365 * 24 * time.Hour),
+	}
+	gen := &mockDocGen{err: errors.New("fpdf: render failed")}
+	svc := domain.NewDocumentService(pRepo, &mockDocRepo{}, gen, &mockDocStore{}, time.Hour)
+	_, err := svc.GenerateAttestation(context.Background(), policyID)
+	if err == nil {
+		t.Fatal("expected error from generator failure")
+	}
+}
+
+func TestDocumentService_ListDocuments_PolicyNotFound(t *testing.T) {
+	svc, _, _ := newDocService(domain.StatusActive)
+	_, _, err := svc.ListDocuments(context.Background(), uuid.New())
+	if !errors.Is(err, domain.ErrPolicyNotFound) {
+		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
+	}
+}
+
 func TestDocumentService_GenerateAttestation_MinIOError(t *testing.T) {
 	policyID := uuid.New()
 	pRepo := newMock()
