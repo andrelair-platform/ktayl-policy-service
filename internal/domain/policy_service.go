@@ -181,6 +181,9 @@ func (s *PolicyService) applyTransition(ctx context.Context, id uuid.UUID, event
 	p.Status = nextStatus
 	p.UpdatedAt = time.Now().UTC()
 
+	if s.db == nil {
+		return nil, fmt.Errorf("database not available")
+	}
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err

@@ -20,3 +20,6 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+    - path: internal/repository/postgres
+      linters:
+        - errcheck

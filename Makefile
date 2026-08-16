@@ -2,7 +2,10 @@ BINARY   := ktayl-policy-service
 IMAGE    := harbor.10.0.0.200.nip.io/library/ktayl-policy-service
 SHA      := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 
-.PHONY: test test-cov build build-image run vuln sec
+.PHONY: test test-cov lint build build-image run vuln sec
+
+lint:
+	golangci-lint run ./...
 
 test:
 	go test -v -race -count=1 ./...
