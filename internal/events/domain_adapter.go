@@ -10,9 +10,9 @@ import (
 var _ domain.EventPublisher = (*Publisher)(nil)
 
 // PublishAsync builds the event envelope and calls Publish in a goroutine.
-// The goroutine inherits a background context so it is not cancelled if the
-// HTTP request context is already done when retries kick in.
+// context.WithoutCancel detaches cancellation so retries survive HTTP request
+// completion while still propagating trace IDs and other context values.
 func (p *Publisher) PublishAsync(ctx context.Context, eventType string, pol *domain.Policy, actor, reason string) {
 	event := BuildTransitionEvent(eventType, pol, actor, reason)
-	go p.Publish(context.Background(), event)
+	go p.Publish(context.WithoutCancel(ctx), event)
 }
