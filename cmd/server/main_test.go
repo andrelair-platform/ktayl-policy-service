@@ -32,7 +32,7 @@ func (noopRepo) List(_ context.Context, _ domain.ListParams) ([]*domain.Policy, 
 func TestHealthz(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	svc := domain.NewPolicyService(noopRepo{})
-	ts := httptest.NewServer(api.NewRouter(log, svc))
+	ts := httptest.NewServer(api.NewRouter(log, svc, nil))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")

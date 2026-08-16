@@ -13,8 +13,14 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
-// NewRouter builds the chi router with all middleware and routes wired up.
-func NewRouter(log *slog.Logger, svc *domain.PolicyService) http.Handler {
+// identityMw is a no-op middleware used when auth is disabled.
+var identityMw = func(h http.Handler) http.Handler { return h }
+
+// NewRouter builds the chi router. When jwtMw is non-nil it is applied to all /v1/* routes
+// and per-endpoint scope guards are enabled. Pass nil to run without authentication (dev/test).
+func NewRouter(log *slog.Logger, svc *domain.PolicyService, jwtMw func(http.Handler) http.Handler) http.Handler {
+	authEnabled := jwtMw != nil
+
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.Recoverer)
@@ -23,12 +29,25 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService) http.Handler {
 	r.Get("/healthz", healthz)
 
 	ph := handlers.NewPolicyHandler(svc)
-	r.Route("/v1/policies", func(r chi.Router) {
-		r.Post("/", ph.CreatePolicy)
-		r.Get("/", ph.ListPolicies)
-		r.Get("/{id}", ph.GetPolicy)
-		r.Put("/{id}", ph.UpdatePolicy)
-		r.Delete("/{id}", ph.CancelPolicy)
+
+	readScope := identityMw
+	writeScope := identityMw
+	if authEnabled {
+		readScope = middleware.RequireScope("policy:read")
+		writeScope = middleware.RequireScope("policy:write")
+	}
+
+	r.Route("/v1", func(r chi.Router) {
+		if authEnabled {
+			r.Use(jwtMw)
+		}
+		r.Route("/policies", func(r chi.Router) {
+			r.With(writeScope).Post("/", ph.CreatePolicy)
+			r.With(readScope).Get("/", ph.ListPolicies)
+			r.With(readScope).Get("/{id}", ph.GetPolicy)
+			r.With(writeScope).Put("/{id}", ph.UpdatePolicy)
+			r.With(writeScope).Delete("/{id}", ph.CancelPolicy)
+		})
 	})
 
 	return r
