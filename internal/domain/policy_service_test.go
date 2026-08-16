@@ -73,7 +73,7 @@ func TestPolicyService_Create_OK(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
 	p := validPolicy()
 
-	if err := svc.Create(context.Background(), p); err != nil {
+	if err := svc.Create(context.Background(), p, "test-actor"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if p.ID == uuid.Nil {
@@ -88,7 +88,7 @@ func TestPolicyService_Create_ValidationError(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
 	p := &domain.Policy{} // missing required fields
 
-	if err := svc.Create(context.Background(), p); err == nil {
+	if err := svc.Create(context.Background(), p, "test-actor"); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
@@ -100,7 +100,7 @@ func TestPolicyService_Create_DuplicateNumber(t *testing.T) {
 	}
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 
-	if err := svc.Create(context.Background(), validPolicy()); err == nil {
+	if err := svc.Create(context.Background(), validPolicy(), "test-actor"); err == nil {
 		t.Fatal("expected ErrPolicyNumberTaken")
 	}
 }
@@ -111,7 +111,7 @@ func TestPolicyService_GetByID_OK(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p)
+	_ = svc.Create(context.Background(), p, "test-actor")
 
 	got, err := svc.GetByID(context.Background(), p.ID)
 	if err != nil {
@@ -151,7 +151,7 @@ func TestPolicyService_List_WithItems(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		p := validPolicy()
 		p.PolicyNumber = uuid.NewString() // ensure unique
-		_ = svc.Create(context.Background(), p)
+		_ = svc.Create(context.Background(), p, "test-actor")
 	}
 
 	policies, err := svc.List(context.Background(), domain.ListParams{Limit: 10})
@@ -169,7 +169,7 @@ func TestPolicyService_Update_OK(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p)
+	_ = svc.Create(context.Background(), p, "test-actor")
 
 	upd := &domain.Policy{
 		HolderName:    "Marie Martin",
@@ -198,7 +198,7 @@ func TestPolicyService_Update_InvalidDates(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p)
+	_ = svc.Create(context.Background(), p, "test-actor")
 
 	upd := &domain.Policy{
 		HolderName:    "Jean",
@@ -218,7 +218,7 @@ func TestPolicyService_Cancel_Draft(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p)
+	_ = svc.Create(context.Background(), p, "test-actor")
 
 	if err := svc.Cancel(context.Background(), p.ID); err != nil {
 		t.Fatalf("unexpected error: %v", err)

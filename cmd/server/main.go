@@ -16,6 +16,7 @@ import (
 	apimw "github.com/andrelair-platform/ktayl-policy-service/internal/api/middleware"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/documents"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
+	"github.com/andrelair-platform/ktayl-policy-service/internal/events"
 	pgRepo "github.com/andrelair-platform/ktayl-policy-service/internal/repository/postgres"
 	"github.com/golang-migrate/migrate/v4"
 	pgx5 "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -39,6 +40,8 @@ func main() {
 	viper.SetDefault("minio_use_ssl", false)
 	viper.SetDefault("minio_public_url", "")
 	viper.SetDefault("document_url_ttl_s", 3600)
+	viper.SetDefault("nats_url", "nats://nats.nats.svc.cluster.local:4222")
+	viper.SetDefault("nats_ca_cert", "")
 	viper.AutomaticEnv()
 
 	// Background context drives the JWKS refresh goroutine for the lifetime of the process.
@@ -104,6 +107,17 @@ func main() {
 			log.Info("document service enabled", "minio_endpoint", ep)
 		} else {
 			log.Warn("MINIO_ENDPOINT not set — document endpoints disabled")
+		}
+
+		// NATS JetStream event publisher (AC-3, AC-6)
+		if natsURL := viper.GetString("nats_url"); natsURL != "" {
+			pub, err := events.Connect(bgCtx, natsURL, viper.GetString("nats_ca_cert"), log)
+			if err != nil {
+				log.Warn("NATS unavailable — events disabled", "err", err)
+			} else {
+				svc.SetPublisher(pub)
+				defer pub.Close()
+			}
 		}
 	} else {
 		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo(), pgRepo.NewNullAuditLogRepo(), nil)
