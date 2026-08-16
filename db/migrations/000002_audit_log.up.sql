@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS policy_audit_log (
 CREATE INDEX idx_audit_log_policy_id ON policy_audit_log(policy_id, occurred_at DESC);
 
 -- Allow statuses introduced in S004 on the policies table.
+-- chk_policy_status is the name used in migration 000001; policies_status_check is the old
+-- name used in an earlier iteration of this migration — drop both for idempotency.
+ALTER TABLE policies DROP CONSTRAINT IF EXISTS chk_policy_status;
 ALTER TABLE policies DROP CONSTRAINT IF EXISTS policies_status_check;
 ALTER TABLE policies ADD CONSTRAINT policies_status_check
     CHECK (status IN ('draft','submitted','active','rejected','amended','cancelled','expired','suspended','terminated'));
