@@ -21,6 +21,7 @@
 - [Endpoints](#endpoints)
 - [Environment variables](#environment-variables)
 - [Database migrations](#database-migrations)
+- [Sprint Tracking](#sprint-tracking)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -194,6 +195,18 @@ SQL migrations in `db/migrations/` follow the Flyway naming convention (`V1__des
 | Migration | Description |
 |---|---|
 | `V1__init_schema.sql` | `policies`, `coverages`, `premiums` tables + indexes + check constraints |
+
+---
+
+## Sprint Tracking
+
+Stories, acceptance criteria, and sprint status are tracked centrally in the platform GitOps repo — not in this repo — so the platform-wide sync pipeline can create GitHub Issues automatically.
+
+| Resource | Link |
+|---|---|
+| Sprint stories | [`minicloud-gitops/bmad/stories/cert-1/m1-m2/`](https://github.com/andrelair-platform/minicloud-gitops/tree/main/bmad/stories/cert-1/m1-m2) |
+| GitHub milestone | [CERT-1 M1-M2 on platform-backlog](https://github.com/andrelair-platform/platform-backlog/milestone/11) |
+| Project board | [andrelair-platform project #1](https://github.com/orgs/andrelair-platform/projects/1) |
 
 ---
 
