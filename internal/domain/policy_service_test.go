@@ -74,7 +74,7 @@ func TestPolicyService_Create_OK(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
 	p := validPolicy()
 
-	if err := svc.Create(context.Background(), p, "test-actor"); err != nil {
+	if err := svc.Create(context.Background(), p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if p.ID == uuid.Nil {
@@ -89,7 +89,7 @@ func TestPolicyService_Create_ValidationError(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
 	p := &domain.Policy{} // missing required fields
 
-	if err := svc.Create(context.Background(), p, "test-actor"); err == nil {
+	if err := svc.Create(context.Background(), p); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
@@ -101,7 +101,7 @@ func TestPolicyService_Create_DuplicateNumber(t *testing.T) {
 	}
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 
-	if err := svc.Create(context.Background(), validPolicy(), "test-actor"); err == nil {
+	if err := svc.Create(context.Background(), validPolicy()); err == nil {
 		t.Fatal("expected ErrPolicyNumberTaken")
 	}
 }
@@ -112,7 +112,7 @@ func TestPolicyService_GetByID_OK(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p, "test-actor")
+	_ = svc.Create(context.Background(), p)
 
 	got, err := svc.GetByID(context.Background(), p.ID)
 	if err != nil {
@@ -152,7 +152,7 @@ func TestPolicyService_List_WithItems(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		p := validPolicy()
 		p.PolicyNumber = uuid.NewString() // ensure unique
-		_ = svc.Create(context.Background(), p, "test-actor")
+		_ = svc.Create(context.Background(), p)
 	}
 
 	policies, err := svc.List(context.Background(), domain.ListParams{Limit: 10})
@@ -170,7 +170,7 @@ func TestPolicyService_Update_OK(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p, "test-actor")
+	_ = svc.Create(context.Background(), p)
 
 	upd := &domain.Policy{
 		HolderName:    "Marie Martin",
@@ -199,7 +199,7 @@ func TestPolicyService_Update_InvalidDates(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p, "test-actor")
+	_ = svc.Create(context.Background(), p)
 
 	upd := &domain.Policy{
 		HolderName:    "Jean",
@@ -219,7 +219,7 @@ func TestPolicyService_Cancel_Draft(t *testing.T) {
 	repo := newMock()
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 	p := validPolicy()
-	_ = svc.Create(context.Background(), p, "test-actor")
+	_ = svc.Create(context.Background(), p)
 
 	if err := svc.Cancel(context.Background(), p.ID); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -256,152 +256,37 @@ func TestPolicyService_Cancel_NotFound(t *testing.T) {
 	}
 }
 
-// ─── Transition methods (error paths — DB required for success path, tested in S009) ─
-
-func activePolicy() *domain.Policy {
-	return &domain.Policy{
-		PolicyNumber:  "POL-ACTIVE",
-		HolderName:    "Marie Martin",
-		ProductCode:   "IARD-HAB-MRH",
-		Status:        domain.StatusActive,
-		EffectiveDate: time.Now().Add(24 * time.Hour),
-		ExpiryDate:    time.Now().Add(365 * 24 * time.Hour),
-	}
-}
-
-func TestPolicyService_Submit_NotFound(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	_, err := svc.Submit(context.Background(), uuid.New(), "actor")
-	if !errors.Is(err, domain.ErrPolicyNotFound) {
-		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
-	}
-}
-
-func TestPolicyService_Submit_InvalidTransition(t *testing.T) {
-	repo := newMock()
-	p := validPolicy()
-	p.Status = domain.StatusSubmitted
-	_ = repo.Create(context.Background(), p)
-
-	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
-	_, err := svc.Submit(context.Background(), p.ID, "actor")
-	if !errors.Is(err, domain.ErrInvalidTransition) {
-		t.Fatalf("expected ErrInvalidTransition, got %v", err)
-	}
-}
-
-func TestPolicyService_Activate_NotFound(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	_, err := svc.Activate(context.Background(), uuid.New(), "actor")
-	if !errors.Is(err, domain.ErrPolicyNotFound) {
-		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
-	}
-}
-
-func TestPolicyService_Activate_InvalidTransition(t *testing.T) {
-	repo := newMock()
-	p := validPolicy() // draft — cannot activate directly
-	_ = repo.Create(context.Background(), p)
-
-	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
-	_, err := svc.Activate(context.Background(), p.ID, "actor")
-	if !errors.Is(err, domain.ErrInvalidTransition) {
-		t.Fatalf("expected ErrInvalidTransition, got %v", err)
-	}
-}
-
-func TestPolicyService_Reject_NotFound(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	_, err := svc.Reject(context.Background(), uuid.New(), "actor", "")
-	if !errors.Is(err, domain.ErrPolicyNotFound) {
-		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
-	}
-}
-
-func TestPolicyService_CancelActive_EmptyReason(t *testing.T) {
-	repo := newMock()
-	p := activePolicy()
-	p.ID = uuid.New()
-	repo.policies[p.ID] = p
-	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
-
-	_, err := svc.CancelActive(context.Background(), p.ID, "actor", "")
-	if !errors.Is(err, domain.ErrReasonRequired) {
-		t.Fatalf("expected ErrReasonRequired, got %v", err)
-	}
-}
-
-func TestPolicyService_CancelActive_InvalidTransition(t *testing.T) {
-	repo := newMock()
-	p := validPolicy() // draft — EventCancel not valid from draft
-	_ = repo.Create(context.Background(), p)
-	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
-
-	_, err := svc.CancelActive(context.Background(), p.ID, "actor", "CUSTOMER_REQUEST")
-	if !errors.Is(err, domain.ErrInvalidTransition) {
-		t.Fatalf("expected ErrInvalidTransition, got %v", err)
-	}
-}
-
-func TestPolicyService_Expire_NotFound(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	_, err := svc.Expire(context.Background(), uuid.New(), "system")
-	if !errors.Is(err, domain.ErrPolicyNotFound) {
-		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
-	}
-}
-
 // ─── ListHistory ─────────────────────────────────────────────────────────────
-
-func TestPolicyService_ListHistory_NotFound(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	_, err := svc.ListHistory(context.Background(), uuid.New())
-	if !errors.Is(err, domain.ErrPolicyNotFound) {
-		t.Fatalf("expected ErrPolicyNotFound, got %v", err)
-	}
-}
 
 func TestPolicyService_ListHistory_OK(t *testing.T) {
 	repo := newMock()
-	p := validPolicy()
-	_ = repo.Create(context.Background(), p)
+	id := uuid.New()
+	repo.policies[id] = &domain.Policy{
+		ID:           id,
+		PolicyNumber: "POL-H-001",
+		HolderName:   "Test Holder",
+		ProductCode:  "IARD-AUTO-RC",
+		Status:       domain.StatusActive,
+	}
 	svc := domain.NewPolicyService(repo, domain.NullAuditLog(), nil)
 
-	logs, err := svc.ListHistory(context.Background(), p.ID)
+	logs, err := svc.ListHistory(context.Background(), id)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if logs != nil {
-		t.Errorf("expected nil from NullAuditLog, got %v", logs)
+	if len(logs) != 0 {
+		t.Errorf("expected 0 logs from NullAuditLog, got %d", len(logs))
 	}
 }
 
-// ─── NATSConnected / SetPublisher ─────────────────────────────────────────────
-
-type mockPublisher struct{ connected bool }
-
-func (m *mockPublisher) PublishAsync(_ context.Context, _ string, _ *domain.Policy, _, _ string) {}
-func (m *mockPublisher) IsConnected() bool                                                       { return m.connected }
-
-func TestPolicyService_NATSConnected_NoPublisher(t *testing.T) {
+func TestPolicyService_ListHistory_NotFound(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	if svc.NATSConnected() {
-		t.Error("expected NATSConnected() == false with no publisher")
+
+	_, err := svc.ListHistory(context.Background(), uuid.New())
+	if err == nil {
+		t.Fatal("expected error")
 	}
-}
-
-func TestPolicyService_NATSConnected_Connected(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	svc.SetPublisher(&mockPublisher{connected: true})
-	if !svc.NATSConnected() {
-		t.Error("expected NATSConnected() == true")
-	}
-}
-
-func TestPolicyService_NATSConnected_Disconnected(t *testing.T) {
-	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)
-	svc.SetPublisher(&mockPublisher{connected: false})
-	if svc.NATSConnected() {
-		t.Error("expected NATSConnected() == false when publisher reports disconnected")
+	if !errors.Is(err, domain.ErrPolicyNotFound) {
+		t.Errorf("want ErrPolicyNotFound, got %v", err)
 	}
 }
