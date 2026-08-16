@@ -14,6 +14,9 @@ linters:
       exclude-functions:
         - (net/http.ResponseWriter).Write
         - encoding/json.NewEncoder.Encode
+    misspell:
+      ignore-words:
+        - constitue
   exclusions:
     rules:
       - path: "_test\\.go"

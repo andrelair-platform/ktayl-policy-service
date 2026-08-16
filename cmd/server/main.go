@@ -90,6 +90,7 @@ func main() {
 				viper.GetString("minio_public_url"),
 			)
 			if err != nil {
+				pool.Close()
 				log.Error("failed to connect to MinIO", "err", err)
 				os.Exit(1)
 			}
