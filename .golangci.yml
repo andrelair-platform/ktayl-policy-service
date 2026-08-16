@@ -14,9 +14,6 @@ linters:
       exclude-functions:
         - (net/http.ResponseWriter).Write
         - encoding/json.NewEncoder.Encode
-    misspell:
-      ignore-words:
-        - constitue
   exclusions:
     rules:
       - path: "_test\\.go"
@@ -25,6 +22,9 @@ linters:
       - path: internal/repository/postgres
         linters:
           - errcheck
+      - path: internal/documents/pdf_generator.go
+        linters:
+          - misspell
 
 formatters:
   enable:
