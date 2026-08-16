@@ -11,16 +11,16 @@ import (
 
 // productNames maps internal product codes to human-readable French names.
 var productNames = map[string]string{
-	"IARD-AUTO-RC":  "Responsabilité Civile Auto",
-	"IARD-HAB-MRH":  "Multirisque Habitation",
-	"PREV-IND-01":   "Prévoyance Individuelle",
+	"IARD-AUTO-RC": "Responsabilité Civile Auto",
+	"IARD-HAB-MRH": "Multirisque Habitation",
+	"PREV-IND-01":  "Prévoyance Individuelle",
 }
 
 // lobNames maps product codes to their line of business.
 var lobNames = map[string]string{
-	"IARD-AUTO-RC":  "IARD — Automobile",
-	"IARD-HAB-MRH":  "IARD — Habitation",
-	"PREV-IND-01":   "Vie & Prévoyance",
+	"IARD-AUTO-RC": "IARD — Automobile",
+	"IARD-HAB-MRH": "IARD — Habitation",
+	"PREV-IND-01":  "Vie & Prévoyance",
 }
 
 // GenerateAttestation builds a PDF attestation (ACPR Art.L113-5) and returns the raw bytes.

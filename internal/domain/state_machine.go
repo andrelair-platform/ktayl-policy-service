@@ -6,13 +6,13 @@ import "errors"
 type Event string
 
 const (
-	EventSubmit  Event = "submit"
+	EventSubmit   Event = "submit"
 	EventActivate Event = "activate"
-	EventReject  Event = "reject"
-	EventAmend   Event = "amend"
-	EventConfirm Event = "confirm"
-	EventCancel  Event = "cancel"
-	EventExpire  Event = "expire"
+	EventReject   Event = "reject"
+	EventAmend    Event = "amend"
+	EventConfirm  Event = "confirm"
+	EventCancel   Event = "cancel"
+	EventExpire   Event = "expire"
 )
 
 // ReasonCode is the controlled vocabulary for audit log reason entries (DORA Art.9).
