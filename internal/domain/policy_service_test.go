@@ -381,7 +381,7 @@ func TestPolicyService_ListHistory_OK(t *testing.T) {
 type mockPublisher struct{ connected bool }
 
 func (m *mockPublisher) PublishAsync(_ context.Context, _ string, _ *domain.Policy, _, _ string) {}
-func (m *mockPublisher) IsConnected() bool                                                         { return m.connected }
+func (m *mockPublisher) IsConnected() bool                                                       { return m.connected }
 
 func TestPolicyService_NATSConnected_NoPublisher(t *testing.T) {
 	svc := domain.NewPolicyService(newMock(), domain.NullAuditLog(), nil)

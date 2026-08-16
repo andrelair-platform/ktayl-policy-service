@@ -21,11 +21,11 @@ const (
 
 // PolicyEvent is the internal representation of a policy lifecycle event.
 type PolicyEvent struct {
-	EventType string
-	PolicyID  string
-	Policy    *domain.Policy
-	Actor     string
-	Reason    string
+	EventType  string
+	PolicyID   string
+	Policy     *domain.Policy
+	Actor      string
+	Reason     string
 	OccurredAt time.Time
 }
 

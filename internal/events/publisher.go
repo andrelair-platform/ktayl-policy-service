@@ -70,13 +70,13 @@ func Connect(ctx context.Context, natsURL, caCert string, log *slog.Logger) (*Pu
 
 func ensureStream(ctx context.Context, js jetstream.JetStream) error {
 	cfg := jetstream.StreamConfig{
-		Name:       StreamName,
-		Subjects:   []string{streamSubject},
-		MaxAge:     streamMaxAge,
-		Storage:    jetstream.FileStorage,
-		Replicas:   1,
-		Retention:  jetstream.LimitsPolicy,
-		Discard:    jetstream.DiscardOld,
+		Name:      StreamName,
+		Subjects:  []string{streamSubject},
+		MaxAge:    streamMaxAge,
+		Storage:   jetstream.FileStorage,
+		Replicas:  1,
+		Retention: jetstream.LimitsPolicy,
+		Discard:   jetstream.DiscardOld,
 	}
 	_, err := js.CreateOrUpdateStream(ctx, cfg)
 	if err != nil {
