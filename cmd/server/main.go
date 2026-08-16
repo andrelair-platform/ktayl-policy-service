@@ -76,7 +76,6 @@ func main() {
 			log.Error("migration failed", "err", err)
 			os.Exit(1)
 		}
-		defer pool.Close()
 
 		svc = domain.NewPolicyService(pgRepo.NewPolicyRepo(pool), pgRepo.NewAuditLogRepo(pool), pool)
 
@@ -106,6 +105,7 @@ func main() {
 		} else {
 			log.Warn("MINIO_ENDPOINT not set — document endpoints disabled")
 		}
+		defer pool.Close()
 	} else {
 		svc = domain.NewPolicyService(pgRepo.NewNullPolicyRepo(), pgRepo.NewNullAuditLogRepo(), nil)
 	}
