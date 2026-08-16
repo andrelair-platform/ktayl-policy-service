@@ -5,12 +5,11 @@ linters:
     - govet
     - errcheck
     - staticcheck
-    - unused
     - gocritic
-    - gofmt
     - gosimple
     - ineffassign
     - misspell
+    - unused
   settings:
     errcheck:
       exclude-functions:
@@ -24,3 +23,7 @@ linters:
       - path: internal/repository/postgres
         linters:
           - errcheck
+
+formatters:
+  enable:
+    - gofmt
