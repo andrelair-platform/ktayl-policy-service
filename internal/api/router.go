@@ -29,6 +29,7 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, jwtMw func(http.Hand
 	r.Get("/healthz", healthz)
 
 	ph := handlers.NewPolicyHandler(svc)
+	th := handlers.NewTransitionHandler(svc)
 
 	readScope := identityMw
 	writeScope := identityMw
@@ -47,6 +48,12 @@ func NewRouter(log *slog.Logger, svc *domain.PolicyService, jwtMw func(http.Hand
 			r.With(readScope).Get("/{id}", ph.GetPolicy)
 			r.With(writeScope).Put("/{id}", ph.UpdatePolicy)
 			r.With(writeScope).Delete("/{id}", ph.CancelPolicy)
+
+			// State machine transitions (S004)
+			r.With(writeScope).Post("/{id}/submit", th.Submit)
+			r.With(writeScope).Post("/{id}/activate", th.Activate)
+			r.With(writeScope).Post("/{id}/cancel", th.Cancel)
+			r.With(readScope).Get("/{id}/history", th.History)
 		})
 	})
 

@@ -30,7 +30,7 @@ func (r *routerTestRepo) List(_ context.Context, _ domain.ListParams) ([]*domain
 }
 
 func newTestService() *domain.PolicyService {
-	return domain.NewPolicyService(&routerTestRepo{})
+	return domain.NewPolicyService(&routerTestRepo{}, domain.NullAuditLog(), nil)
 }
 
 func TestHealthz_StatusOK(t *testing.T) {

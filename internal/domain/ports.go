@@ -43,3 +43,22 @@ type PremiumRepository interface {
 	ListByPolicy(ctx context.Context, policyID uuid.UUID) ([]*Premium, error)
 	MarkPaid(ctx context.Context, id uuid.UUID, paidAt time.Time) error
 }
+
+// AuditLog is a single DORA Art.9 traceability record.
+type AuditLog struct {
+	ID         uuid.UUID
+	PolicyID   uuid.UUID
+	FromStatus PolicyStatus
+	ToStatus   PolicyStatus
+	ActorID    string
+	Reason     string
+	OccurredAt time.Time
+}
+
+// AuditLogRepository persists audit rows within caller-managed transactions.
+type AuditLogRepository interface {
+	// Insert writes one audit row. tx must be a *pgx.Tx — typed as any to avoid
+	// importing pgx in the domain package.
+	Insert(ctx context.Context, tx any, log *AuditLog) error
+	ListByPolicy(ctx context.Context, policyID uuid.UUID) ([]*AuditLog, error)
+}

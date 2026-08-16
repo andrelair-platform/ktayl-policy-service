@@ -7,6 +7,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// NullAuditLogRepo is a no-op implementation used when no database DSN is configured.
+type NullAuditLogRepo struct{}
+
+func NewNullAuditLogRepo() *NullAuditLogRepo { return &NullAuditLogRepo{} }
+
+var _ domain.AuditLogRepository = NullAuditLogRepo{}
+
+func (NullAuditLogRepo) Insert(_ context.Context, _ any, _ *domain.AuditLog) error { return nil }
+func (NullAuditLogRepo) ListByPolicy(_ context.Context, _ uuid.UUID) ([]*domain.AuditLog, error) {
+	return nil, nil
+}
+
 // NullPolicyRepo is a no-op implementation used when no database DSN is configured.
 type NullPolicyRepo struct{}
 
