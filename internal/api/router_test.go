@@ -35,7 +35,7 @@ func newTestService() *domain.PolicyService {
 
 func TestHealthz_StatusOK(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	ts := httptest.NewServer(NewRouter(log, newTestService()))
+	ts := httptest.NewServer(NewRouter(log, newTestService(), nil))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")
@@ -54,7 +54,7 @@ func TestHealthz_StatusOK(t *testing.T) {
 
 func TestHealthz_Body(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	ts := httptest.NewServer(NewRouter(log, newTestService()))
+	ts := httptest.NewServer(NewRouter(log, newTestService(), nil))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")
@@ -77,7 +77,7 @@ func TestHealthz_Body(t *testing.T) {
 
 func TestNotFound(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	ts := httptest.NewServer(NewRouter(log, newTestService()))
+	ts := httptest.NewServer(NewRouter(log, newTestService(), nil))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/nonexistent")

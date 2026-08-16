@@ -13,6 +13,7 @@ import (
 
 	"github.com/andrelair-platform/ktayl-policy-service/db"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/api"
+	apimw "github.com/andrelair-platform/ktayl-policy-service/internal/api/middleware"
 	"github.com/andrelair-platform/ktayl-policy-service/internal/domain"
 	pgRepo "github.com/andrelair-platform/ktayl-policy-service/internal/repository/postgres"
 	"github.com/golang-migrate/migrate/v4"
@@ -30,7 +31,25 @@ func main() {
 	viper.SetDefault("read_timeout_s", 10)
 	viper.SetDefault("write_timeout_s", 10)
 	viper.SetDefault("dsn", "")
+	viper.SetDefault("authentik_jwks_url", "")
 	viper.AutomaticEnv()
+
+	// Background context drives the JWKS refresh goroutine for the lifetime of the process.
+	bgCtx := context.Background()
+
+	// Set up JWT middleware when AUTHENTIK_JWKS_URL is provided.
+	var jwtMw func(http.Handler) http.Handler
+	if jwksURL := viper.GetString("authentik_jwks_url"); jwksURL != "" {
+		mw, err := apimw.NewJWKSMiddleware(bgCtx, jwksURL)
+		if err != nil {
+			log.Error("failed to create JWKS middleware", "url", jwksURL, "err", err)
+			os.Exit(1)
+		}
+		jwtMw = mw
+		log.Info("JWT auth enabled", "jwks_url", jwksURL)
+	} else {
+		log.Warn("AUTHENTIK_JWKS_URL not set — running without JWT auth")
+	}
 
 	dsn := viper.GetString("dsn")
 	if dsn == "" {
@@ -39,7 +58,7 @@ func main() {
 
 	var svc *domain.PolicyService
 	if dsn != "" {
-		pool, err := pgxpool.New(context.Background(), dsn)
+		pool, err := pgxpool.New(bgCtx, dsn)
 		if err != nil {
 			log.Error("failed to create db pool", "err", err)
 			os.Exit(1)
@@ -61,7 +80,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      api.NewRouter(log, svc),
+		Handler:      api.NewRouter(log, svc, jwtMw),
 		ReadTimeout:  time.Duration(viper.GetInt("read_timeout_s")) * time.Second,
 		WriteTimeout: time.Duration(viper.GetInt("write_timeout_s")) * time.Second,
 	}
@@ -78,9 +97,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutCtx); err != nil {
 		log.Error("shutdown error", "err", err)
 	}
 	log.Info("server stopped")
