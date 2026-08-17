@@ -13,6 +13,14 @@ const sidebars: SidebarsConfig = {
         'data-model/mpd',
       ],
     },
+    {
+      type: 'category',
+      label: 'Architecture Decisions',
+      collapsed: false,
+      items: [
+        'adr/ADR-001-database-layer',
+      ],
+    },
   ],
 };
 
