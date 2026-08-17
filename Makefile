@@ -2,10 +2,20 @@ BINARY   := ktayl-policy-service
 IMAGE    := harbor.10.0.0.200.nip.io/library/ktayl-policy-service
 SHA      := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 
-.PHONY: test test-cov build build-image run vuln sec
+.PHONY: test test-cov test-integration lint build build-image run vuln sec
+
+lint:
+	golangci-lint run ./...
 
 test:
 	go test -v -race -count=1 ./...
+
+test-integration:
+	docker compose -f tests/integration/docker-compose.yml up -d --wait
+	INTEGRATION_DSN="postgres://ktayl:testpass@localhost:5433/ktayl_policy_test?sslmode=disable" \
+	INTEGRATION_NATS_URL="nats://localhost:4223" \
+	go test -v -race -count=1 -timeout=120s ./tests/integration/... ; \
+	docker compose -f tests/integration/docker-compose.yml down -v
 
 test-cov:
 	go test -race -count=1 \

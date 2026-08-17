@@ -11,7 +11,12 @@ type PolicyStatus string
 
 const (
 	StatusDraft      PolicyStatus = "draft"
+	StatusSubmitted  PolicyStatus = "submitted"
 	StatusActive     PolicyStatus = "active"
+	StatusRejected   PolicyStatus = "rejected"
+	StatusAmended    PolicyStatus = "amended"
+	StatusCancelled  PolicyStatus = "cancelled"
+	StatusExpired    PolicyStatus = "expired"
 	StatusSuspended  PolicyStatus = "suspended"
 	StatusTerminated PolicyStatus = "terminated"
 )
