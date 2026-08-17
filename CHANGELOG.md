@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.2](https://github.com/andrelair-platform/ktayl-policy-service/compare/ktayl-policy-service-v0.1.1...ktayl-policy-service-v0.1.2) (2026-08-17)
+
+
+### Features
+
+* **auth:** Authentik JWKS JWT middleware + scope-based authz (S007) ([#15](https://github.com/andrelair-platform/ktayl-policy-service/issues/15)) ([5d81952](https://github.com/andrelair-platform/ktayl-policy-service/commit/5d81952c979784007ebe00d62308bd00559702ae))
+* CERT-1 M1-M2 sprint close — policy service complete ([190aa9a](https://github.com/andrelair-platform/ktayl-policy-service/commit/190aa9a1885d5a480269705263da71d4ce2de250))
+* CERT-1 M1-M2 sprint close — policy service complete ([190aa9a](https://github.com/andrelair-platform/ktayl-policy-service/commit/190aa9a1885d5a480269705263da71d4ce2de250))
+* **S003:** policy REST API — CRUD + OpenAPI spec + cursor pagination ([#14](https://github.com/andrelair-platform/ktayl-policy-service/issues/14)) ([c2368e1](https://github.com/andrelair-platform/ktayl-policy-service/commit/c2368e16617ffb2e6af61a09839f7ee68d02937f))
+* **s004:** state machine transitions + audit log ([32d35ba](https://github.com/andrelair-platform/ktayl-policy-service/commit/32d35bad3b0428c7564ce79b1cc9ef88ca9ce3d9))
+* **s005:** document generation + MinIO presigned URLs ([6ee1d1c](https://github.com/andrelair-platform/ktayl-policy-service/commit/6ee1d1c1b66101d9b083f30bb371cb1fafd9bfb8))
+* **s006:** NATS CloudEvents publisher + async policy transitions ([d9e8b54](https://github.com/andrelair-platform/ktayl-policy-service/commit/d9e8b544e8d73b3ee57670b838a861d642a63c02))
+* **s008:** golangci-lint config + 70% coverage gate ([401279d](https://github.com/andrelair-platform/ktayl-policy-service/commit/401279d52fe4d335deb04a2081a6a64559539f64))
+* **s009:** integration tests + testcontainers lifecycle coverage ([8962ee0](https://github.com/andrelair-platform/ktayl-policy-service/commit/8962ee002babf6257f2570078b31be2568bd86eb))
+
 ## [0.1.1](https://github.com/andrelair-platform/ktayl-policy-service/compare/ktayl-policy-service-v0.1.0...ktayl-policy-service-v0.1.1) (2026-08-14)
 
 
