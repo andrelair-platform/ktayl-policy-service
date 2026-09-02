@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # main-only: Kargo owns dev→prod promotion + dev verification (fully cut over — no
+  # dev-branch/bump-gitops track). dev iteration is local/preview, not a deployed track.
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -231,66 +233,10 @@ jobs:
             --type cyclonedx \
             ${{ env.GHCR_IMAGE }}@${{ steps.build.outputs.digest }}
 
-  # ── GitOps bump (dev overlay) ──────────────────────────────────────────────
-  # Overlay created in S010. This job skips gracefully if the path doesn't exist.
-  bump-gitops:
-    needs: build-and-push
-    if: github.ref_name == 'dev'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v4.1.3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-
-      - name: Trust minicloud CA
-        run: |
-          echo "${{ secrets.MINICLOUD_CA_CERT }}" \
-            | sudo tee /usr/local/share/ca-certificates/minicloud-ca.crt
-          sudo update-ca-certificates
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.GITOPS_REPO }}
-          token:      ${{ secrets.GITOPS_TOKEN }}
-
-      - uses: crazy-max/ghaction-import-gpg@v7
-        with:
-          gpg_private_key:    ${{ secrets.GPG_PRIVATE_KEY }}
-          git_user_signingkey: true
-          git_commit_gpgsign: true
-
-      - uses: imranismail/setup-kustomize@v3
-        with:
-          kustomize-version: "5.6.0"
-
-      - name: Bump dev overlay
-        env:
-          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
-        run: |
-          SHA="${{ needs.build-and-push.outputs.image_tag }}"
-          OVERLAY="services/ktayl-policy-service/minicloud-1/dev"
-          if [ ! -d "$OVERLAY" ]; then
-            echo "Overlay $OVERLAY not yet created (pending S010) — skipping bump"
-            exit 0
-          fi
-          BRANCH="ci/ktayl-policy-service-${SHA}"
-          git checkout -b "${BRANCH}"
-          cd "$OVERLAY"
-          kustomize edit set image \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA}
-          cd -
-          git add "${OVERLAY}/kustomization.yaml"
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -S -m "ci(ktayl-policy-service): bump dev to ${SHA}"
-          git push origin "${BRANCH}"
-          gh pr create \
-            --repo ${{ env.GITOPS_REPO }} \
-            --base main --head "${BRANCH}" \
-            --title "ci(ktayl-policy-service): bump dev to ${SHA}" \
-            --body "Automated image bump from CI run ${{ github.run_id }}."
-          gh pr merge "${BRANCH}" \
-            --repo ${{ env.GITOPS_REPO }} \
-            --admin --merge --delete-branch
+  # ── Promotion + dev verification are handled by KARGO, not CI ────────────────
+  # CI ends at "build a verified, immutable artifact" (lint, test, integration, Trivy,
+  # Cosign, SBOM, dual-push Harbor + ghcr). The dev-branch bump-gitops job is removed —
+  # Kargo auto-promotes the main Freight to the dev Stage (ProjectConfig autoPromotionEnabled),
+  # runs the dev verification (services/ktayl-policy-service/kargo/analysis-dev-smoke.yaml,
+  # a smoke via ingress-nginx), and only a Freight VERIFIED in dev is promotable to prod
+  # (CODEOWNERS-gated PR). See services/ktayl-policy-service/kargo/ in minicloud-gitops.
