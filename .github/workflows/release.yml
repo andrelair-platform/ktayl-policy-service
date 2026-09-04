@@ -21,3 +21,38 @@ jobs:
           token:         ${{ secrets.GITHUB_TOKEN }}
           config-file:   release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # ── Dual-tag: SHA stays the canonical promotion identifier (Kargo/Argo pin it); when
+  # release-please cuts a release, crane adds the SemVer alias to the SAME ghcr digest that
+  # ci.yml already built — no rebuild. Humans/audit read SemVer; the deploy pipeline uses SHA.
+  # See minicloud-platform-docs developer-platform/kargo-promotion (SemVer alias / dual-tagging).
+  dual-tag-semver:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compute short SHA + SemVer
+        id: v
+        run: |
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          SEMVER=$(printf '%s' "${{ needs.release-please.outputs.tag_name }}" | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          case "$SEMVER" in v*) : ;; *) SEMVER="v${SEMVER}" ;; esac
+          echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
+      - uses: imjasonh/setup-crane@v0.4
+      - name: Login to ghcr
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Add SemVer alias to the SHA image digest
+        run: |
+          IMG=ghcr.io/andrelair-platform/ktayl-policy-service
+          SHA="${{ steps.v.outputs.sha }}"; SEMVER="${{ steps.v.outputs.semver }}"
+          for i in $(seq 1 30); do
+            crane digest "$IMG:$SHA" >/dev/null 2>&1 && break
+            echo "waiting for $IMG:$SHA (ci build)…"; sleep 20
+          done
+          DIGEST=$(crane digest "$IMG:$SHA")
+          crane tag "$IMG:$SHA" "$SEMVER"
+          echo "$IMG@$DIGEST now carries both tags: $SHA (promotion) + $SEMVER (release alias)"
