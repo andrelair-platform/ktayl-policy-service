@@ -7,6 +7,14 @@ metadata:
   annotations:
     github.com/project-slug: andrelair-platform/ktayl-policy-service
     backstage.io/techdocs-ref: dir:.
+    # Capability-registry governance columns (§8) — policy lifecycle/binding is underwriting-governed.
+    governance.ktayl-solution/applicable-policy: Politique d'administration des polices|https://intranet.devandre.sbs/books/underwriting-cadre-de-gouvernance/page/01-politique-policy
+    governance.ktayl-solution/applicable-standard: Standard de gestion de police|https://intranet.devandre.sbs/books/underwriting-cadre-de-gouvernance/page/02-standard
+    governance.ktayl-solution/applicable-guideline: Directive souscription & liaison police|https://intranet.devandre.sbs/books/underwriting-cadre-de-gouvernance/page/03-directive-guideline
+    governance.ktayl-solution/applicable-procedure: Procédure de bind|https://intranet.devandre.sbs/books/underwriting-cadre-de-gouvernance/page/04-procedure
+    governance.ktayl-solution/required-controls: Immutabilité du contrat lié · cohérence quote↔police · four-eyes au bind
+    governance.ktayl-solution/approval-authority: CUO / comité de souscription (bind)
+    governance.ktayl-solution/evidence-required: Police tracée · référence quote · approbation (journal d'audit)
   tags:
     - go
     - insurance
