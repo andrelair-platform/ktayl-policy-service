@@ -62,7 +62,10 @@ jobs:
 
       - name: Vulnerability check (govulncheck)
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          # Pinned (not @latest): govulncheck v1.8.0 requires Go >= 1.26, but CI runs Go 1.25
+          # with GOTOOLCHAIN=local, so @latest fails to install. v1.1.4 builds on Go 1.25 and the
+          # vuln DB is queried live regardless of tool version.
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           govulncheck ./...
 
       - name: Static security analysis (gosec)
