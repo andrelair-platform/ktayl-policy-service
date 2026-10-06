@@ -1,0 +1,637 @@
+{
+  "name": "ktayl_policy",
+  "tables": [
+    {
+      "name": "public.coverages",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "deductible",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuid_generate_v4()"
+        },
+        {
+          "name": "insured_amount",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "policy_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "coverages_pkey",
+          "def": "CREATE UNIQUE INDEX coverages_pkey ON public.coverages USING btree (id)",
+          "table": "public.coverages",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_coverages_policy_id",
+          "def": "CREATE INDEX idx_coverages_policy_id ON public.coverages USING btree (policy_id)",
+          "table": "public.coverages",
+          "columns": [
+            "policy_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "chk_deductible",
+          "type": "CHECK",
+          "def": "CHECK ((deductible \u003e= 0))",
+          "table": "public.coverages",
+          "referenced_table": "",
+          "columns": [
+            "deductible"
+          ]
+        },
+        {
+          "name": "chk_insured_amount",
+          "type": "CHECK",
+          "def": "CHECK ((insured_amount \u003e 0))",
+          "table": "public.coverages",
+          "referenced_table": "",
+          "columns": [
+            "insured_amount"
+          ]
+        },
+        {
+          "name": "coverages_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.coverages",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverages_policy_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE",
+          "table": "public.coverages",
+          "referenced_table": "public.policies",
+          "columns": [
+            "policy_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.policies",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "effective_date",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "expiry_date",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "holder_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuid_generate_v4()"
+        },
+        {
+          "name": "policy_number",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "product_code",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'draft'::text"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_policies_policy_number",
+          "def": "CREATE INDEX idx_policies_policy_number ON public.policies USING btree (policy_number)",
+          "table": "public.policies",
+          "columns": [
+            "policy_number"
+          ]
+        },
+        {
+          "name": "idx_policies_status",
+          "def": "CREATE INDEX idx_policies_status ON public.policies USING btree (status)",
+          "table": "public.policies",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "policies_pkey",
+          "def": "CREATE UNIQUE INDEX policies_pkey ON public.policies USING btree (id)",
+          "table": "public.policies",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "policies_policy_number_key",
+          "def": "CREATE UNIQUE INDEX policies_policy_number_key ON public.policies USING btree (policy_number)",
+          "table": "public.policies",
+          "columns": [
+            "policy_number"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "chk_policy_dates",
+          "type": "CHECK",
+          "def": "CHECK ((effective_date \u003c expiry_date))",
+          "table": "public.policies",
+          "referenced_table": "",
+          "columns": [
+            "effective_date",
+            "expiry_date"
+          ]
+        },
+        {
+          "name": "policies_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.policies",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "policies_policy_number_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (policy_number)",
+          "table": "public.policies",
+          "referenced_table": "",
+          "columns": [
+            "policy_number"
+          ]
+        },
+        {
+          "name": "policies_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'active'::text, 'rejected'::text, 'amended'::text, 'cancelled'::text, 'expired'::text, 'suspended'::text, 'terminated'::text])))",
+          "table": "public.policies",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.policy_audit_log",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "actor_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "from_status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "policy_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text"
+        },
+        {
+          "name": "to_status",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_audit_log_policy_id",
+          "def": "CREATE INDEX idx_audit_log_policy_id ON public.policy_audit_log USING btree (policy_id, occurred_at DESC)",
+          "table": "public.policy_audit_log",
+          "columns": [
+            "policy_id",
+            "occurred_at"
+          ]
+        },
+        {
+          "name": "policy_audit_log_pkey",
+          "def": "CREATE UNIQUE INDEX policy_audit_log_pkey ON public.policy_audit_log USING btree (id)",
+          "table": "public.policy_audit_log",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "policy_audit_log_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.policy_audit_log",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "policy_audit_log_policy_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE",
+          "table": "public.policy_audit_log",
+          "referenced_table": "public.policies",
+          "columns": [
+            "policy_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.policy_documents",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "minio_key",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "policy_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "nullable": false,
+          "default": "'attestation'::text"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_policy_documents_policy_id",
+          "def": "CREATE INDEX idx_policy_documents_policy_id ON public.policy_documents USING btree (policy_id, created_at DESC)",
+          "table": "public.policy_documents",
+          "columns": [
+            "policy_id",
+            "created_at"
+          ]
+        },
+        {
+          "name": "policy_documents_pkey",
+          "def": "CREATE UNIQUE INDEX policy_documents_pkey ON public.policy_documents USING btree (id)",
+          "table": "public.policy_documents",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "policy_documents_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.policy_documents",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "policy_documents_policy_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE",
+          "table": "public.policy_documents",
+          "referenced_table": "public.policies",
+          "columns": [
+            "policy_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.premiums",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "amount",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "due_date",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "frequency",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuid_generate_v4()"
+        },
+        {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "policy_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_premiums_due_date",
+          "def": "CREATE INDEX idx_premiums_due_date ON public.premiums USING btree (due_date)",
+          "table": "public.premiums",
+          "columns": [
+            "due_date"
+          ]
+        },
+        {
+          "name": "idx_premiums_policy_id",
+          "def": "CREATE INDEX idx_premiums_policy_id ON public.premiums USING btree (policy_id)",
+          "table": "public.premiums",
+          "columns": [
+            "policy_id"
+          ]
+        },
+        {
+          "name": "premiums_pkey",
+          "def": "CREATE UNIQUE INDEX premiums_pkey ON public.premiums USING btree (id)",
+          "table": "public.premiums",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "chk_premium_amount",
+          "type": "CHECK",
+          "def": "CHECK ((amount \u003e 0))",
+          "table": "public.premiums",
+          "referenced_table": "",
+          "columns": [
+            "amount"
+          ]
+        },
+        {
+          "name": "chk_premium_frequency",
+          "type": "CHECK",
+          "def": "CHECK ((frequency = ANY (ARRAY['monthly'::text, 'quarterly'::text, 'annual'::text])))",
+          "table": "public.premiums",
+          "referenced_table": "",
+          "columns": [
+            "frequency"
+          ]
+        },
+        {
+          "name": "premiums_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.premiums",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "premiums_policy_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE",
+          "table": "public.premiums",
+          "referenced_table": "public.policies",
+          "columns": [
+            "policy_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "table": "public.coverages",
+      "columns": [
+        "policy_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.policies",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.policy_audit_log",
+      "columns": [
+        "policy_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.policies",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.policy_documents",
+      "columns": [
+        "policy_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.policies",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.premiums",
+      "columns": [
+        "policy_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.policies",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE"
+    }
+  ],
+  "functions": [
+    {
+      "name": "public.uuid_generate_v1",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v1mc",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v3",
+      "return_type": "uuid",
+      "arguments": "namespace uuid, name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v4",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v5",
+      "return_type": "uuid",
+      "arguments": "namespace uuid, name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_nil",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_dns",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_oid",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_url",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_x500",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    }
+  ],
+  "driver": {
+    "name": "postgres",
+    "database_version": "PostgreSQL 17.4 (Debian 17.4-1.pgdg120+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit",
+    "meta": {
+      "current_schema": "public",
+      "search_paths": [
+        "postgres",
+        "public"
+      ],
+      "dict": {
+        "Functions": "Stored procedures and functions"
+      }
+    }
+  }
+}
