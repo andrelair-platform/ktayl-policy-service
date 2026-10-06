@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/andrelair-platform/ktayl-policy-service/compare/ktayl-policy-service-v0.1.2...ktayl-policy-service-v0.1.3) (2026-10-06)
+
+
+### Features
+
+* **ci:** schema-ERD drift-check (golang-migrate → tbls) ([#31](https://github.com/andrelair-platform/ktayl-policy-service/issues/31)) ([27dcc97](https://github.com/andrelair-platform/ktayl-policy-service/commit/27dcc97b231593bf6f3c141b758b8eaa82271c3e))
+
 ## [0.1.2](https://github.com/andrelair-platform/ktayl-policy-service/compare/ktayl-policy-service-v0.1.1...ktayl-policy-service-v0.1.2) (2026-08-17)
 
 
