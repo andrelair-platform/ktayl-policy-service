@@ -70,7 +70,8 @@ jobs:
 
       - name: Static security analysis (gosec)
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          # Pinned (not @latest) for reproducible builds — 12-factor #2 (Renovate bumps it via PR).
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
           gosec -severity high -confidence medium ./...
 
   # ── Schema docs drift-check: the committed ERD must match the golang-migrate SQL ──
