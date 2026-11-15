@@ -28,6 +28,11 @@ spec:
   providesApis:
     - ktayl-policy-service-api
 ---
+# NOTE (planned fold): ktayl-policy-service is being folded into ktayl-core as the
+# `policy` module (ktayl-core ADR-014/015; phased, in progress). This entity reflects the
+# API as it is LIVE today (consumed by ktayl-underwriting at bind). When the fold completes,
+# retire this entity and — if ktayl-core then serves the policy endpoints — register
+# `ktayl-core-policy-api` there, and repoint the underwriting consumer edge.
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
