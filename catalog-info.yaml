@@ -25,3 +25,24 @@ spec:
   lifecycle: development
   owner: user:AndreLiar
   system: ktayl-solution
+  providesApis:
+    - ktayl-policy-service-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ktayl-policy-service-api
+  title: ktayl Policy Service API
+  description: Insurance policy lifecycle REST API for the ktayl-solution IS (CERT-1)
+  tags:
+    - openapi
+    - insurance
+    - rest
+spec:
+  type: openapi
+  lifecycle: development
+  owner: user:AndreLiar
+  system: ktayl-solution
+  # Resolved relative to this catalog-info.yaml location → api/openapi.yaml in the repo.
+  definition:
+    $text: ./api/openapi.yaml
